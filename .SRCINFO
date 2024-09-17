@@ -1,0 +1,17 @@
+pkgbase = solidity-analyzer-git
+	pkgdesc = API library built in Rust, which exposes a single function, which takes the contents of a Solidity source file and returns its imports and version pragmas
+	pkgver = 0.1.2.1.1
+	pkgrel = 1
+	url = https://github.com/themartiancompany/solidity-analyzer
+	arch = any
+	license = custom
+	makedepends = npm
+	makedepends = curl
+	makedepends = jq
+	depends = nodejs
+	provides = solidity-analyzer=0.1.2.1.1
+	conflicts = solidity-analyzer
+	source = solidity-analyzer.tar.gz::https://github.com/themartiancompany/solidity-analyzer/archive/refs/heads/main.tar.gz
+	sha256sums = SKIP
+
+pkgname = solidity-analyzer-git
