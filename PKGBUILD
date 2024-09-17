@@ -8,7 +8,7 @@ _offline='false'
 _git='false'
 _source='ur'
 _ns="NomicFoundation"
-_pub="@nomicfoundation"
+_pub="nomicfoundation"
 _os="$( \
   uname \
     -o)"
@@ -17,6 +17,9 @@ _arch="$( \
     -m)"
 if [[ "${_os}" == "Android" ]]; then
   _source="ur"
+  if [[ "${_arch}" == "armv7l" ]]; then
+    _platform="android-arm-eabi"
+  fi
 fi
 _pkg=solidity-analyzer
 _pkgbase="${_pkg}"
@@ -30,7 +33,8 @@ _pkgdesc=(
   'and returns its imports and version pragmas'
 )
 pkgdesc="${_pkgdesc[*]}"
-pkgver=0.1.2.1.1
+_pkgver="0.1.2"
+pkgver="${_pkgver}.1.1"
 pkgrel=1
 arch=(
   'x86_64'
@@ -70,12 +74,15 @@ _url="${url}"
 [[ "${_offline}" == "true" ]] && \
   _url="file://${HOME}/${pkgname}"
 _branch="main"
+_tag="${_branch}"
+_tag_name="branch"
+_tarname="${_pkgname}-${_tag}"
 [[ "${_git}" == true ]] && \
   makedepends+=(
     git
   ) && \
   source+=(
-    "${_pkgname}-${_branch}::git+${_url}#branch=${_branch}"
+    "${_pkgname}-${_tag}::git+${_url}#${_tag_name}=${_tag}"
   )
 [[ "${_git}" == false ]] && \
   makedepends+=(
@@ -83,7 +90,7 @@ _branch="main"
     jq
   ) && \
   source+=(
-    "${_pkgname}.tar.gz::${_url}/archive/refs/heads/${_branch}.tar.gz"
+    "${_pkgname}.tar.gz::${_url}/archive/refs/heads/${_tag}.tar.gz"
   )
 sha256sums+=(
   'SKIP'
@@ -178,11 +185,14 @@ _git_pkgver() {
     "${_pkgver}"
 }
 
-_android_quirk() {
+prepare() {
   local \
     _tools_bin \
     _clang \
+    _compiler_dir \
     _compiler
+  cd \
+    "${srcdir}/${_tarname}"
   if [[ "${_os}" == "Android" ]] && \
      [[ "${_arch}" == "armv7l" ]]; then
     _clang="$( \
@@ -190,11 +200,11 @@ _android_quirk() {
         -v \
         clang)"
     _tools_bin="undefined/toolchains/llvm/prebuilt/linux-x86_64/bin"
-    _compiler="$( \
-      pwd)/${_bin}/armv7a-linux-androideabi24-clang"
+    _compiler_dir="${srcdir}/${_tarname}/${_tools_bin}"
+    _compiler="${_compiler_dir}/armv7a-linux-androideabi24-clang"
     mkdir \
       -p \
-      "${_bin}"
+      "${_compiler_dir}"
     ln \
       -s \
       "${_clang}" \
@@ -205,7 +215,7 @@ _android_quirk() {
 
 build() {
   cd \
-    ${_tarname}
+    "${srcdir}/${_tarname}"
   npm \
     install \
     . || \
@@ -216,9 +226,27 @@ build() {
     install \
     . || \
     true
-  _android_quirk
   yarn \
-    build
+    install || \
+    true
+  yarn \
+    run \
+      build
+  if [[ "${_os}" == "Android" ]] && \
+     [[ "${_arch}" == "armv7l" ]]; then
+    mv \
+      "solidity-analyzer.${_platform}.node" \
+      "npm/${_platform}" || \
+      true
+    cd \
+      "npm/${_platform}"
+    npm \
+      pack
+    cd \
+      "${srcdir}/${_tarname}"
+  fi
+  npm \
+    pack
 }
 
 package() {
@@ -230,9 +258,28 @@ package() {
     # --user=root
     --prefix="${pkgdir}/usr"
   )
-  rm \
-    -fr \
-      "${pkgdir}/usr/etc"
+  cd \
+    "${srcdir}/${_tarname}"
+  if [[ "${_os}" == "Android" ]] && \
+     [[ "${_arch}" == "armv7l" ]]; then
+    cd \
+      "npm/${_platform}"
+    _tgz="${_pub}-${_pkg}-${_platform}-${_pkgver}.tgz"
+    npm \
+      install \
+        "${_npm_options[@]}" \
+        "${_tgz}"
+    cd \
+      "${srcdir}/${_tarname}"
+  fi
+  _tgz="${_pub}-${_pkg}-${_pkgver}.tgz"
+  npm \
+    install \
+      "${_npm_options[@]}" \
+      "${_tgz}"
+  # rm \
+  #   -fr \
+  #     "${pkgdir}/usr/etc"
   # Fix npm derp
   find \
     "${pkgdir}/usr" \
@@ -243,4 +290,5 @@ package() {
 	'{}' \
 	+
 }
+
 # vim:set sw=2 sts=-1 et:
