@@ -181,6 +181,9 @@ package() {
   )
   cd \
     ${_tarname}
+  npm \
+    install \
+    .
   yarn
   yarn \
     build
