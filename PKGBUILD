@@ -12,6 +12,9 @@ _pub="@nomicfoundation"
 _os="$( \
   uname \
     -o)"
+_arch="$( \
+  uname \
+    -m)"
 if [[ "${_os}" == "Android" ]]; then
   _source="ur"
 fi
@@ -30,7 +33,13 @@ pkgdesc="${_pkgdesc[*]}"
 pkgver=0.1.2.1.1
 pkgrel=1
 arch=(
-  'any'
+  'x86_64'
+  'arm'
+  'aarch64'
+  'i686'
+  'mips'
+  'powerpc'
+  'pentium4'
 )
 if [[ "${_source}" == "ur" ]]; then
   _ns="themartiancompany"
@@ -169,6 +178,48 @@ _git_pkgver() {
     "${_pkgver}"
 }
 
+_android_quirk() {
+  local \
+    _tools_bin \
+    _clang \
+    _compiler
+  if [[ "${_os}" == "Android" ]] && \
+     [[ "${_arch}" == "armv7l" ]]; then
+    _clang="$( \
+      command \
+        -v \
+        clang)"
+    _tools_bin="undefined/toolchains/llvm/prebuilt/linux-x86_64/bin"
+    _compiler="$( \
+      pwd)/${_bin}/armv7a-linux-androideabi24-clang"
+    mkdir \
+      -p \
+      "${_bin}"
+    ln \
+      -s \
+      "${_clang}" \
+      "${_compiler}" || \
+      true
+  fi
+}
+
+build() {
+  cd \
+    ${_tarname}
+  npm \
+    install \
+    . || \
+    true
+  yarn || \
+    true
+  npm \
+    install \
+    . || \
+    true
+  _android_quirk
+  yarn \
+    build
+}
 
 package() {
   local \
@@ -179,14 +230,6 @@ package() {
     # --user=root
     --prefix="${pkgdir}/usr"
   )
-  cd \
-    ${_tarname}
-  npm \
-    install \
-    .
-  yarn
-  yarn \
-    build
   rm \
     -fr \
       "${pkgdir}/usr/etc"
@@ -200,5 +243,4 @@ package() {
 	'{}' \
 	+
 }
-
 # vim:set sw=2 sts=-1 et:
